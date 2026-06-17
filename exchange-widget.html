@@ -1,0 +1,1073 @@
+<!-- ============================================================= -->
+<!--  PAYGATE.TO  ·  CRYPTO SWAP / EXCHANGE WIDGET                  -->
+<!--  100% client-side · no hardcoded tickers · live PayGate API   -->
+<!--                                                               -->
+<!--  HOW TO EMBED:                                                -->
+<!--  Paste everything below (the <style>, the <div>, the          -->
+<!--  <script>) into any page, inside any container/div.           -->
+<!--  Optionally configure on the mount element:                   -->
+<!--    <div id="paygate-swap"                                     -->
+<!--         data-callback="https://yoursite.com/swap-callback">   -->
+<!--    </div>                                                     -->
+<!--  Everything is scoped under .pgsw so it won't touch your CSS. -->
+<!-- ============================================================= -->
+
+<style>
+/* ---------- scoped design tokens ---------- */
+.pgsw{
+  --pg-bg:#ffffff;
+  --pg-bg-2:#f6f7fb;
+  --pg-field:#f4f5fa;
+  --pg-field-2:#eef0f7;
+  --pg-line:#e7e9f2;
+  --pg-line-2:#dfe2ee;
+  --pg-ink:#0d1226;
+  --pg-ink-2:#4a5169;
+  --pg-faint:#8b91a7;
+  --pg-accent:#6d5efc;
+  --pg-accent-2:#9b6cff;
+  --pg-accent-soft:#efeaff;
+  --pg-ok:#16a34a;
+  --pg-ok-soft:#e7f6ec;
+  --pg-warn:#d98a04;
+  --pg-warn-soft:#fdf3e0;
+  --pg-bad:#dc2626;
+  --pg-bad-soft:#fdeaea;
+  --pg-radius:18px;
+  --pg-radius-sm:12px;
+  --pg-shadow:0 18px 50px -22px rgba(36,30,90,.35), 0 2px 8px -4px rgba(36,30,90,.18);
+  --pg-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"Inter",sans-serif;
+  --pg-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+
+  all:initial;
+  font-family:var(--pg-font);
+  color:var(--pg-ink);
+  display:block;
+  box-sizing:border-box;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  width:100%;
+  max-width:460px;
+  margin:0 auto;
+  line-height:1.45;
+}
+.pgsw *,.pgsw *::before,.pgsw *::after{box-sizing:border-box;}
+
+.pgsw .pg-card{
+  background:var(--pg-bg);
+  border:1px solid var(--pg-line);
+  border-radius:var(--pg-radius);
+  box-shadow:var(--pg-shadow);
+  overflow:hidden;
+  position:relative;
+}
+
+/* ---------- top progress rail ---------- */
+.pgsw .pg-rail{
+  display:flex;
+  gap:6px;
+  padding:14px 20px 0;
+}
+.pgsw .pg-rail span{
+  flex:1;
+  height:4px;
+  border-radius:99px;
+  background:var(--pg-field-2);
+  overflow:hidden;
+  position:relative;
+}
+.pgsw .pg-rail span.is-done::after,
+.pgsw .pg-rail span.is-active::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg,var(--pg-accent),var(--pg-accent-2));
+  border-radius:99px;
+}
+.pgsw .pg-rail span.is-active::after{animation:pgfill .5s ease;}
+@keyframes pgfill{from{transform:translateX(-100%);}to{transform:translateX(0);}}
+
+.pgsw .pg-head{
+  padding:18px 20px 4px;
+}
+.pgsw .pg-step-label{
+  font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--pg-accent);
+}
+.pgsw .pg-title{
+  font-size:19px;font-weight:700;letter-spacing:-.01em;margin:2px 0 0;
+}
+.pgsw .pg-sub{font-size:13px;color:var(--pg-faint);margin-top:2px;}
+
+.pgsw .pg-body{padding:14px 20px 22px;}
+
+/* ---------- amount rows ---------- */
+.pgsw .pg-fieldgroup{position:relative;}
+.pgsw .pg-money{
+  background:var(--pg-field);
+  border:1px solid transparent;
+  border-radius:var(--pg-radius-sm);
+  padding:12px 14px;
+  display:flex;align-items:center;gap:10px;
+  transition:border-color .15s ease, background .15s ease;
+}
+.pgsw .pg-money:focus-within{border-color:var(--pg-accent);background:#fff;}
+.pgsw .pg-money .pg-mini{
+  font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--pg-faint);
+}
+.pgsw .pg-money .pg-col{flex:1;min-width:0;}
+.pgsw .pg-amount{
+  width:100%;border:none;background:transparent;outline:none;
+  font-family:var(--pg-font);font-size:22px;font-weight:600;color:var(--pg-ink);
+  letter-spacing:-.01em;padding:2px 0 0;
+}
+.pgsw .pg-amount::placeholder{color:#c3c7d6;}
+.pgsw .pg-amount[readonly]{color:var(--pg-ink-2);}
+
+/* ---------- currency selector pill ---------- */
+.pgsw .pg-pill{
+  flex:none;display:flex;align-items:center;gap:8px;
+  background:#fff;border:1px solid var(--pg-line-2);
+  border-radius:99px;padding:7px 10px 7px 8px;cursor:pointer;
+  transition:border-color .15s, box-shadow .15s;
+  max-width:170px;
+}
+.pgsw .pg-pill:hover{border-color:var(--pg-accent);}
+.pgsw .pg-pill:focus-visible{outline:2px solid var(--pg-accent);outline-offset:2px;}
+.pgsw .pg-coin-ico{
+  width:26px;height:26px;border-radius:50%;flex:none;background:var(--pg-field-2);
+  object-fit:cover;display:block;
+}
+.pgsw .pg-coin-fallback{
+  width:26px;height:26px;border-radius:50%;flex:none;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;color:#fff;
+  background:linear-gradient(135deg,var(--pg-accent),var(--pg-accent-2));
+}
+.pgsw .pg-pill .pg-sym{font-size:14px;font-weight:700;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pgsw .pg-pill .pg-net{
+  font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--pg-accent);background:var(--pg-accent-soft);
+  padding:1px 5px;border-radius:6px;
+}
+.pgsw .pg-chev{width:14px;height:14px;flex:none;color:var(--pg-faint);transition:transform .15s;}
+.pgsw .pg-pill[aria-expanded="true"] .pg-chev{transform:rotate(180deg);}
+
+/* ---------- swap-direction button (signature) ---------- */
+.pgsw .pg-swapbtn-wrap{display:flex;justify-content:center;height:0;position:relative;z-index:2;}
+.pgsw .pg-swapbtn{
+  position:relative;top:-13px;
+  width:38px;height:38px;border-radius:12px;cursor:pointer;
+  border:3px solid var(--pg-bg);
+  background:linear-gradient(135deg,var(--pg-accent),var(--pg-accent-2));
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 6px 14px -4px rgba(109,94,252,.6);
+  transition:transform .35s cubic-bezier(.5,1.6,.4,1);
+}
+.pgsw .pg-swapbtn:hover{transform:rotate(180deg) scale(1.06);}
+.pgsw .pg-swapbtn:active{transform:rotate(180deg) scale(.94);}
+.pgsw .pg-swapbtn svg{width:17px;height:17px;}
+.pgsw .pg-gap{height:8px;}
+
+/* ---------- searchable dropdown ---------- */
+.pgsw .pg-drop{
+  position:absolute;left:0;right:0;top:calc(100% + 8px);z-index:30;
+  background:#fff;border:1px solid var(--pg-line);
+  border-radius:var(--pg-radius-sm);
+  box-shadow:0 24px 50px -18px rgba(20,16,60,.4);
+  overflow:hidden;display:none;
+}
+.pgsw .pg-drop.open{display:block;animation:pgpop .14s ease;}
+@keyframes pgpop{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
+.pgsw .pg-search{
+  padding:10px;border-bottom:1px solid var(--pg-line);
+}
+.pgsw .pg-search input{
+  width:100%;border:1px solid var(--pg-line-2);border-radius:10px;
+  padding:9px 12px;font-size:14px;font-family:var(--pg-font);color:var(--pg-ink);
+  outline:none;background:var(--pg-field);
+}
+.pgsw .pg-search input:focus{border-color:var(--pg-accent);background:#fff;}
+.pgsw .pg-list{max-height:288px;overflow-y:auto;overscroll-behavior:contain;}
+.pgsw .pg-opt{
+  display:flex;align-items:center;gap:11px;padding:9px 13px;cursor:pointer;
+  border:none;background:none;width:100%;text-align:left;font-family:var(--pg-font);
+}
+.pgsw .pg-opt:hover,.pgsw .pg-opt.hl{background:var(--pg-accent-soft);}
+.pgsw .pg-opt .pg-coin-ico,.pgsw .pg-opt .pg-coin-fallback{width:30px;height:30px;}
+.pgsw .pg-opt .pg-coin-fallback{font-size:11px;}
+.pgsw .pg-opt .pg-name{font-size:14px;font-weight:600;color:var(--pg-ink);}
+.pgsw .pg-opt .pg-meta{font-size:11.5px;color:var(--pg-faint);display:flex;gap:6px;align-items:center;margin-top:1px;}
+.pgsw .pg-opt .pg-net{font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--pg-accent);background:var(--pg-accent-soft);padding:1px 5px;border-radius:6px;}
+.pgsw .pg-opt .pg-coltxt{flex:1;min-width:0;}
+.pgsw .pg-empty{padding:22px 14px;text-align:center;color:var(--pg-faint);font-size:13px;}
+
+/* ---------- inline notes / errors ---------- */
+.pgsw .pg-note{font-size:12px;margin-top:7px;display:flex;gap:6px;align-items:flex-start;}
+.pgsw .pg-note.warn{color:var(--pg-warn);}
+.pgsw .pg-note.bad{color:var(--pg-bad);}
+.pgsw .pg-note.muted{color:var(--pg-faint);}
+.pgsw .pg-min{font-size:12px;color:var(--pg-faint);margin-top:7px;}
+.pgsw .pg-min b{color:var(--pg-ink-2);font-weight:600;}
+
+/* ---------- text input ---------- */
+.pgsw .pg-input{
+  width:100%;border:1px solid var(--pg-line-2);border-radius:var(--pg-radius-sm);
+  padding:13px 14px;font-size:14px;font-family:var(--pg-mono);color:var(--pg-ink);
+  outline:none;background:var(--pg-field);transition:border-color .15s,background .15s;
+}
+.pgsw .pg-input:focus{border-color:var(--pg-accent);background:#fff;}
+.pgsw .pg-label{font-size:13px;font-weight:600;color:var(--pg-ink-2);margin-bottom:7px;display:block;}
+
+/* ---------- buttons ---------- */
+.pgsw .pg-btn{
+  width:100%;border:none;border-radius:var(--pg-radius-sm);cursor:pointer;
+  padding:15px;font-family:var(--pg-font);font-size:15px;font-weight:700;color:#fff;
+  background:linear-gradient(135deg,var(--pg-accent),var(--pg-accent-2));
+  margin-top:16px;transition:filter .15s,transform .08s,opacity .15s;
+  display:flex;align-items:center;justify-content:center;gap:9px;
+}
+.pgsw .pg-btn:hover{filter:brightness(1.05);}
+.pgsw .pg-btn:active{transform:translateY(1px);}
+.pgsw .pg-btn:disabled{opacity:.5;cursor:not-allowed;filter:none;}
+.pgsw .pg-btn.ghost{
+  background:none;color:var(--pg-ink-2);border:1px solid var(--pg-line-2);margin-top:10px;
+}
+.pgsw .pg-btn.ghost:hover{background:var(--pg-field);filter:none;}
+
+/* ---------- review summary ---------- */
+.pgsw .pg-summary{
+  background:var(--pg-bg-2);border:1px solid var(--pg-line);border-radius:var(--pg-radius-sm);
+  padding:14px 15px;margin-bottom:4px;
+}
+.pgsw .pg-sumrow{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:5px 0;}
+.pgsw .pg-sumrow .k{color:var(--pg-faint);}
+.pgsw .pg-sumrow .v{font-weight:600;color:var(--pg-ink);display:flex;align-items:center;gap:7px;text-align:right;}
+.pgsw .pg-sumrow .v .pg-coin-ico,.pgsw .pg-sumrow .v .pg-coin-fallback{width:18px;height:18px;font-size:8px;}
+.pgsw .pg-sumdiv{height:1px;background:var(--pg-line);margin:5px 0;}
+
+/* ---------- deposit box ---------- */
+.pgsw .pg-deposit{
+  border:1px dashed var(--pg-line-2);border-radius:var(--pg-radius-sm);
+  padding:15px;text-align:center;background:var(--pg-bg-2);
+}
+.pgsw .pg-qr{width:160px;height:160px;border-radius:12px;background:#fff;border:1px solid var(--pg-line);margin:0 auto 12px;display:block;object-fit:contain;padding:6px;}
+.pgsw .pg-send-amt{font-size:24px;font-weight:700;letter-spacing:-.01em;}
+.pgsw .pg-send-amt small{font-size:14px;font-weight:600;color:var(--pg-ink-2);}
+.pgsw .pg-addr-box{
+  margin-top:12px;background:#fff;border:1px solid var(--pg-line-2);border-radius:10px;
+  padding:11px 12px;display:flex;align-items:center;gap:10px;
+}
+.pgsw .pg-addr-box code{font-family:var(--pg-mono);font-size:12.5px;color:var(--pg-ink);word-break:break-all;flex:1;text-align:left;}
+.pgsw .pg-copy{
+  flex:none;border:1px solid var(--pg-line-2);background:#fff;border-radius:8px;
+  padding:7px 9px;cursor:pointer;color:var(--pg-ink-2);transition:.15s;
+}
+.pgsw .pg-copy:hover{border-color:var(--pg-accent);color:var(--pg-accent);}
+.pgsw .pg-copy.copied{color:var(--pg-ok);border-color:var(--pg-ok);}
+.pgsw .pg-copy svg{width:15px;height:15px;display:block;}
+
+/* ---------- status timeline ---------- */
+.pgsw .pg-status-head{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
+.pgsw .pg-status-dot{
+  width:42px;height:42px;border-radius:12px;flex:none;display:flex;align-items:center;justify-content:center;
+  background:var(--pg-accent-soft);color:var(--pg-accent);
+}
+.pgsw .pg-status-dot.ok{background:var(--pg-ok-soft);color:var(--pg-ok);}
+.pgsw .pg-status-dot.bad{background:var(--pg-bad-soft);color:var(--pg-bad);}
+.pgsw .pg-status-dot.warn{background:var(--pg-warn-soft);color:var(--pg-warn);}
+.pgsw .pg-status-dot svg{width:22px;height:22px;}
+.pgsw .pg-spin{animation:pgspin 1s linear infinite;}
+@keyframes pgspin{to{transform:rotate(360deg);}}
+.pgsw .pg-status-txt b{font-size:16px;font-weight:700;display:block;}
+.pgsw .pg-status-txt span{font-size:12.5px;color:var(--pg-faint);}
+
+.pgsw .pg-timeline{list-style:none;margin:0;padding:0;}
+.pgsw .pg-timeline li{
+  display:flex;gap:12px;padding-bottom:16px;position:relative;
+}
+.pgsw .pg-timeline li:last-child{padding-bottom:0;}
+.pgsw .pg-timeline li::before{
+  content:"";position:absolute;left:9px;top:20px;bottom:0;width:2px;background:var(--pg-line);
+}
+.pgsw .pg-timeline li:last-child::before{display:none;}
+.pgsw .pg-tl-mark{
+  width:20px;height:20px;border-radius:50%;flex:none;border:2px solid var(--pg-line);
+  background:#fff;display:flex;align-items:center;justify-content:center;z-index:1;
+}
+.pgsw .pg-timeline li.done .pg-tl-mark{background:var(--pg-ok);border-color:var(--pg-ok);}
+.pgsw .pg-timeline li.done .pg-tl-mark svg{width:11px;height:11px;color:#fff;}
+.pgsw .pg-timeline li.active .pg-tl-mark{border-color:var(--pg-accent);}
+.pgsw .pg-timeline li.active .pg-tl-mark::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--pg-accent);animation:pgpulse 1.2s ease-in-out infinite;}
+@keyframes pgpulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.7);}}
+.pgsw .pg-tl-txt{font-size:13.5px;font-weight:600;color:var(--pg-faint);padding-top:0px;}
+.pgsw .pg-timeline li.done .pg-tl-txt,.pgsw .pg-timeline li.active .pg-tl-txt{color:var(--pg-ink);}
+
+.pgsw .pg-poll-note{font-size:11.5px;color:var(--pg-faint);text-align:center;margin-top:16px;display:flex;gap:6px;align-items:center;justify-content:center;}
+.pgsw .pg-tx{margin-top:14px;}
+.pgsw .pg-tx a{color:var(--pg-accent);font-size:12.5px;font-family:var(--pg-mono);word-break:break-all;text-decoration:none;}
+.pgsw .pg-tx a:hover{text-decoration:underline;}
+
+/* ---------- loading / skeleton ---------- */
+.pgsw .pg-loading{padding:46px 20px;text-align:center;color:var(--pg-faint);font-size:13.5px;}
+.pgsw .pg-loading .pg-spin{display:inline-block;margin-bottom:12px;color:var(--pg-accent);}
+.pgsw .pg-loading .pg-spin svg{width:30px;height:30px;}
+
+.pgsw .pg-foot{text-align:center;font-size:11px;color:var(--pg-faint);padding:0 20px 16px;}
+.pgsw .pg-foot b{color:var(--pg-ink-2);font-weight:600;}
+
+@media (max-width:420px){
+  .pgsw .pg-pill{max-width:140px;}
+  .pgsw .pg-amount{font-size:19px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .pgsw *{animation:none !important;transition:none !important;}
+}
+</style>
+
+<!-- ===== mount point - paste this anywhere ===== -->
+<div id="paygate-swap"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------
+  //  Configuration
+  // ---------------------------------------------------------------
+  var API = "https://api.paygate.to/crypto";
+  var EP = {
+    info:       API + "/info.php",
+    swapInfo:   API + "/swap-info.php",
+    swap:       function (tickerFrom) { return API + "/" + tickerFrom + "/swap.php"; },
+    qr:         function (tickerFrom) { return API + "/" + tickerFrom + "/qrcode.php"; },
+    status:     API + "/control/swap-status.php"
+  };
+  var POLL_MS = 60000; // status check every minute (client-side, avoids rate limiting)
+
+  var mount = document.getElementById("paygate-swap")
+           || document.querySelector("[data-paygate-swap]");
+  if (!mount) {
+    mount = document.createElement("div");
+    mount.id = "paygate-swap";
+    document.body.appendChild(mount);
+  }
+  if (mount.getAttribute("data-pg-init") === "1") return; // guard double init
+  mount.setAttribute("data-pg-init", "1");
+
+  // Callback URL is required by the API. Default to this page with a unique
+  // param; override with data-callback="https://yoursite.com/..."
+  function defaultCallback() {
+    var base = mount.getAttribute("data-callback");
+    if (base && /^https?:\/\//i.test(base)) return base;
+    if (/^https?:$/i.test(location.protocol)) {
+      return location.origin + location.pathname;
+    }
+    return "https://example.com/paygate-swap"; // for file:// / non-http hosts
+  }
+
+  // ---------------------------------------------------------------
+  //  Tiny DOM helpers
+  // ---------------------------------------------------------------
+  function el(tag, attrs, children) {
+    var n = document.createElement(tag);
+    if (attrs) for (var k in attrs) {
+      if (k === "class") n.className = attrs[k];
+      else if (k === "html") n.innerHTML = attrs[k];
+      else if (k === "text") n.textContent = attrs[k];
+      else if (k.slice(0, 2) === "on") n.addEventListener(k.slice(2).toLowerCase(), attrs[k]);
+      else if (attrs[k] != null) n.setAttribute(k, attrs[k]);
+    }
+    if (children) (Array.isArray(children) ? children : [children]).forEach(function (c) {
+      if (c == null) return;
+      n.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+    });
+    return n;
+  }
+  function svg(paths, vb) {
+    return '<svg viewBox="' + (vb || "0 0 24 24") + '" fill="none" stroke="currentColor" '
+      + 'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + paths + '</svg>';
+  }
+  var ICON = {
+    swap:   svg('<path d="M7 4v13M7 4l-3 3M7 4l3 3"/><path d="M17 20V7M17 20l3-3M17 20l-3-3"/>'),
+    chev:   svg('<path d="M6 9l6 6 6-6"/>'),
+    copy:   svg('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>'),
+    check:  svg('<path d="M20 6L9 17l-5-5"/>'),
+    spin:   svg('<path d="M21 12a9 9 0 1 1-6.2-8.5" />'),
+    clock:  svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+    alert:  svg('<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>'),
+    party:  svg('<path d="M20 6L9 17l-5-5"/>')
+  };
+
+  function fetchJSON(url) {
+    return fetch(url, { method: "GET", headers: { "Accept": "application/json" } })
+      .then(function (r) {
+        return r.text().then(function (t) {
+          var j = null;
+          try { j = JSON.parse(t); } catch (e) { /* body may be plain text */ }
+          if (!r.ok) {
+            // PayGate returns plain-text errors (e.g. "Invalid exchange parameters!")
+            // as well as JSON {error|message}. Surface whatever it sent.
+            var apiMsg = (j && (j.error || j.message)) || (t && t.trim()) || "";
+            var err = new Error(apiMsg || ("Request failed (HTTP " + r.status + ")."));
+            err.status = r.status;
+            err.apiMessage = apiMsg;
+            throw err;
+          }
+          if (j === null) throw new Error("Unexpected response from PayGate (HTTP " + r.status + ").");
+          return j;
+        });
+      });
+  }
+
+  // ---------------------------------------------------------------
+  //  State
+  // ---------------------------------------------------------------
+  var S = {
+    coins: [],          // [{ticker, network, symbol, name, logo, min}]
+    byTicker: {},       // ticker -> coin
+    from: null,
+    to: null,
+    amount: "",
+    address: "",
+    exchange: null,     // last swap.php data
+    ipnToken: null,
+    pollTimer: null,
+    step: 1
+  };
+
+  var root = el("div", { class: "pgsw" });
+  mount.appendChild(root);
+
+  // ---------------------------------------------------------------
+  //  Coin rendering helpers (logo with graceful initials fallback)
+  // ---------------------------------------------------------------
+  function coinIcon(coin, size) {
+    if (coin && coin.logo) {
+      var img = el("img", {
+        class: "pg-coin-ico", src: coin.logo, alt: coin.symbol || "",
+        loading: "lazy", decoding: "async"
+      });
+      img.addEventListener("error", function () {
+        var fb = coinFallback(coin);
+        if (img.parentNode) img.parentNode.replaceChild(fb, img);
+      });
+      if (size) { img.style.width = size + "px"; img.style.height = size + "px"; }
+      return img;
+    }
+    return coinFallback(coin, size);
+  }
+  function coinFallback(coin, size) {
+    var letters = (coin && coin.symbol ? coin.symbol : "?").slice(0, 3).toUpperCase();
+    var n = el("span", { class: "pg-coin-fallback", text: letters });
+    if (size) { n.style.width = size + "px"; n.style.height = size + "px"; }
+    return n;
+  }
+
+  // ---------------------------------------------------------------
+  //  Boot: load both endpoints, build the coin list (no hardcoding)
+  // ---------------------------------------------------------------
+  function showLoading(msg) {
+    root.innerHTML = "";
+    root.appendChild(el("div", { class: "pg-card" }, [
+      el("div", { class: "pg-loading" }, [
+        el("div", { class: "pg-spin", html: ICON.spin }),
+        el("div", { text: msg || "Loading supported assets\u2026" })
+      ])
+    ]));
+  }
+  function showFatal(msg) {
+    root.innerHTML = "";
+    root.appendChild(el("div", { class: "pg-card" }, [
+      el("div", { class: "pg-body" }, [
+        el("div", { class: "pg-status-head" }, [
+          el("div", { class: "pg-status-dot bad", html: ICON.alert }),
+          el("div", { class: "pg-status-txt" }, [
+            el("b", { text: "Couldn't reach PayGate" }),
+            el("span", { text: msg })
+          ])
+        ]),
+        el("button", { class: "pg-btn", onclick: boot }, "Try again")
+      ])
+    ]));
+  }
+
+  function resolveMeta(ticker, info) {
+    // ticker is e.g. "btc" or "bep20/usdt"
+    var network = null, symbol = ticker, node = null;
+    if (ticker.indexOf("/") !== -1) {
+      var parts = ticker.split("/");
+      network = parts[0]; symbol = parts.slice(1).join("/");
+      if (info[network] && info[network][symbol]) node = info[network][symbol];
+    } else if (info[ticker] && info[ticker].ticker) {
+      node = info[ticker];
+    }
+    return {
+      ticker: ticker,
+      network: network,
+      symbol: symbol,
+      name: node ? node.coin : symbol.toUpperCase(),
+      logo: node ? node.logo : null,
+      min: node ? Number(node.minimum_transaction_coin) : null
+    };
+  }
+
+  function boot() {
+    showLoading();
+    Promise.all([fetchJSON(EP.swapInfo), fetchJSON(EP.info)])
+      .then(function (res) {
+        var swap = res[0], info = res[1];
+        if (!swap || !swap.tickers || !swap.tickers.length) {
+          throw new Error("No swappable assets were returned.");
+        }
+        S.coins = swap.tickers.map(function (t) { return resolveMeta(t, info); });
+        // alphabetical by display name, then network
+        S.coins.sort(function (a, b) {
+          var n = a.name.localeCompare(b.name);
+          return n !== 0 ? n : (a.network || "").localeCompare(b.network || "");
+        });
+        S.byTicker = {};
+        S.coins.forEach(function (c) { S.byTicker[c.ticker] = c; });
+        // sensible initial selection: first two distinct assets from the live list
+        S.from = S.coins[0];
+        S.to = S.coins[1] || S.coins[0];
+        renderStep1();
+      })
+      .catch(function (e) { showFatal(e.message || "Network error."); });
+  }
+
+  // ---------------------------------------------------------------
+  //  Shell (rail + header)
+  // ---------------------------------------------------------------
+  function shell(stepNo, label, title, sub, bodyNodes) {
+    root.innerHTML = "";
+    var rail = el("div", { class: "pg-rail" });
+    for (var i = 1; i <= 4; i++) {
+      rail.appendChild(el("span", {
+        class: i < stepNo ? "is-done" : (i === stepNo ? "is-active" : "")
+      }));
+    }
+    var card = el("div", { class: "pg-card" }, [
+      rail,
+      el("div", { class: "pg-head" }, [
+        el("div", { class: "pg-step-label", text: label }),
+        el("div", { class: "pg-title", text: title }),
+        sub ? el("div", { class: "pg-sub", text: sub }) : null
+      ]),
+      el("div", { class: "pg-body" }, bodyNodes),
+      el("div", { class: "pg-foot", html: "Powered by <b>PayGate.to</b> \u00B7 No sign-up \u00B7 Non-custodial" })
+    ]);
+    root.appendChild(card);
+  }
+
+  // ---------------------------------------------------------------
+  //  Searchable currency dropdown
+  // ---------------------------------------------------------------
+  function buildSelector(side) {
+    var current = S[side];
+    var wrap = el("div", { class: "pg-fieldgroup" });
+
+    var pill = el("button", {
+      class: "pg-pill", type: "button", "aria-haspopup": "listbox", "aria-expanded": "false"
+    });
+    function renderPill() {
+      pill.innerHTML = "";
+      pill.appendChild(coinIcon(S[side]));
+      var col = el("span", {}, [ el("span", { class: "pg-sym", text: S[side].symbol.toUpperCase() }) ]);
+      pill.appendChild(col);
+      if (S[side].network) pill.appendChild(el("span", { class: "pg-net", text: S[side].network }));
+      pill.appendChild(el("span", { class: "pg-chev", html: ICON.chev }));
+    }
+    renderPill();
+
+    var drop = el("div", { class: "pg-drop", role: "listbox" });
+    var searchInput = el("input", { type: "text", placeholder: "Search asset or network\u2026", autocomplete: "off", spellcheck: "false" });
+    var list = el("div", { class: "pg-list" });
+    drop.appendChild(el("div", { class: "pg-search" }, [searchInput]));
+    drop.appendChild(list);
+
+    var highlighted = -1, visible = [];
+
+    function renderList(q) {
+      q = (q || "").trim().toLowerCase();
+      list.innerHTML = "";
+      visible = S.coins.filter(function (c) {
+        if (!q) return true;
+        return (c.name + " " + c.symbol + " " + (c.network || "") + " " + c.ticker).toLowerCase().indexOf(q) !== -1;
+      });
+      highlighted = -1;
+      if (!visible.length) {
+        list.appendChild(el("div", { class: "pg-empty", text: "No assets match \u201C" + q + "\u201D" }));
+        return;
+      }
+      visible.forEach(function (c, idx) {
+        var meta = el("span", { class: "pg-meta" });
+        if (c.network) meta.appendChild(el("span", { class: "pg-net", text: c.network }));
+        meta.appendChild(el("span", { text: c.symbol.toUpperCase() }));
+        var opt = el("button", { class: "pg-opt", type: "button", role: "option", "data-i": idx }, [
+          coinIcon(c),
+          el("span", { class: "pg-coltxt" }, [
+            el("span", { class: "pg-name", text: c.name }),
+            meta
+          ])
+        ]);
+        opt.addEventListener("click", function () { choose(c); });
+        list.appendChild(opt);
+      });
+    }
+
+    function open() {
+      // close any other open dropdown first
+      Array.prototype.forEach.call(root.querySelectorAll(".pg-drop.open"), function (d) {
+        if (d !== drop) { d.classList.remove("open"); }
+      });
+      drop.classList.add("open");
+      pill.setAttribute("aria-expanded", "true");
+      searchInput.value = "";
+      renderList("");
+      setTimeout(function () { searchInput.focus(); }, 10);
+      document.addEventListener("click", outside, true);
+    }
+    function close() {
+      drop.classList.remove("open");
+      pill.setAttribute("aria-expanded", "false");
+      document.removeEventListener("click", outside, true);
+    }
+    function outside(e) { if (!wrap.contains(e.target)) close(); }
+    function choose(c) {
+      S[side] = c;
+      // prevent identical from/to
+      if (S.from.ticker === S.to.ticker) {
+        var other = side === "from" ? "to" : "from";
+        var alt = S.coins.find(function (x) { return x.ticker !== c.ticker; });
+        if (alt) S[other] = alt;
+      }
+      close();
+      renderStep1();
+    }
+
+    function setHL(i) {
+      var opts = list.querySelectorAll(".pg-opt");
+      if (highlighted >= 0 && opts[highlighted]) opts[highlighted].classList.remove("hl");
+      highlighted = i;
+      if (opts[highlighted]) { opts[highlighted].classList.add("hl"); opts[highlighted].scrollIntoView({ block: "nearest" }); }
+    }
+
+    pill.addEventListener("click", function () {
+      drop.classList.contains("open") ? close() : open();
+    });
+    searchInput.addEventListener("input", function () { renderList(searchInput.value); });
+    searchInput.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowDown") { e.preventDefault(); setHL(Math.min(highlighted + 1, visible.length - 1)); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); setHL(Math.max(highlighted - 1, 0)); }
+      else if (e.key === "Enter") { e.preventDefault(); if (visible[highlighted]) choose(visible[highlighted]); }
+      else if (e.key === "Escape") { close(); pill.focus(); }
+    });
+
+    wrap.appendChild(pill);
+    wrap.appendChild(drop);
+    return wrap;
+  }
+
+  // ---------------------------------------------------------------
+  //  STEP 1 — pair + amount
+  // ---------------------------------------------------------------
+  function renderStep1() {
+    S.step = 1;
+    var sendRow = el("div", { class: "pg-money" }, [
+      el("div", { class: "pg-col" }, [
+        el("div", { class: "pg-mini", text: "You send" }),
+        el("input", {
+          class: "pg-amount", type: "text", inputmode: "decimal",
+          placeholder: "0.00", value: S.amount,
+          oninput: function (e) {
+            var v = e.target.value.replace(/[^0-9.]/g, "");
+            var p = v.split("."); if (p.length > 2) v = p[0] + "." + p.slice(1).join("");
+            S.amount = v; e.target.value = v; validate();
+          }
+        })
+      ]),
+      buildSelector("from")
+    ]);
+
+    var getRow = el("div", { class: "pg-money" }, [
+      el("div", { class: "pg-col" }, [
+        el("div", { class: "pg-mini", text: "You get (estimated)" }),
+        el("input", { class: "pg-amount", type: "text", readonly: "", value: "", placeholder: "shown after review" })
+      ]),
+      buildSelector("to")
+    ]);
+
+    var swapBtn = el("div", { class: "pg-swapbtn-wrap" }, [
+      el("button", {
+        class: "pg-swapbtn", type: "button", title: "Swap direction", "aria-label": "Swap direction",
+        html: ICON.swap,
+        onclick: function () { var t = S.from; S.from = S.to; S.to = t; renderStep1(); }
+      })
+    ]);
+
+    var minNote = el("div", { class: "pg-min" });
+    function refreshMin() {
+      if (S.from.min) {
+        minNote.innerHTML = "Minimum to send: <b>" + S.from.min + " " + S.from.symbol.toUpperCase() + "</b>";
+      } else { minNote.textContent = ""; }
+    }
+    refreshMin();
+
+    var err = el("div", { class: "pg-note bad" });
+    err.style.display = "none";
+
+    var cta = el("button", { class: "pg-btn", type: "button", text: "Continue" });
+
+    function validate() {
+      var amt = parseFloat(S.amount);
+      var ok = true, msg = "";
+      if (S.from.ticker === S.to.ticker) { ok = false; msg = "Choose two different assets to swap between."; }
+      else if (!S.amount || isNaN(amt) || amt <= 0) { ok = false; }
+      else if (S.from.min && amt < S.from.min) { ok = false; msg = "Amount is below the minimum of " + S.from.min + " " + S.from.symbol.toUpperCase() + "."; }
+      cta.disabled = !ok;
+      err.style.display = msg ? "flex" : "none";
+      err.textContent = msg;
+    }
+    cta.addEventListener("click", function () { if (!cta.disabled) renderStep2(); });
+
+    validate();
+    refreshMin();
+
+    shell(1, "Step 1 of 4", "Exchange crypto", "Pick a pair and the amount to send.", [
+      sendRow, swapBtn, getRow, minNote, err, cta
+    ]);
+
+    // re-validate now that selectors may have changed selection
+    validate();
+  }
+
+  // ---------------------------------------------------------------
+  //  STEP 2 — recipient address
+  // ---------------------------------------------------------------
+  function renderStep2() {
+    S.step = 2;
+    var summary = miniSummary();
+    var addr = el("input", {
+      class: "pg-input", type: "text", spellcheck: "false", autocomplete: "off",
+      placeholder: "Your " + S.to.symbol.toUpperCase() + " wallet address",
+      value: S.address,
+      oninput: function (e) { S.address = e.target.value.trim(); validate(); }
+    });
+    var hint = el("div", { class: "pg-note muted", html:
+      "Make sure this address supports <b>&nbsp;" + S.to.symbol.toUpperCase() +
+      (S.to.network ? " on " + S.to.network.toUpperCase() : "") + "</b>. Funds are sent here once the swap completes." });
+    var err = el("div", { class: "pg-note bad" }); err.style.display = "none";
+
+    var cta = el("button", { class: "pg-btn", type: "button" });
+    function setCta(loading) {
+      cta.disabled = loading || !S.address;
+      cta.innerHTML = "";
+      if (loading) { cta.appendChild(el("span", { class: "pg-spin", html: ICON.spin })); cta.appendChild(document.createTextNode("Creating exchange\u2026")); }
+      else cta.appendChild(document.createTextNode("Create exchange"));
+    }
+    function validate() { setCta(false); }
+    cta.addEventListener("click", function () {
+      if (!S.address) return;
+      err.style.display = "none";
+      setCta(true);
+      createExchange().then(function () {
+        renderStep3();
+      }).catch(function (e) {
+        setCta(false);
+        err.style.display = "flex";
+        err.textContent = e.message || "Couldn't create the exchange. Please try again.";
+      });
+    });
+
+    var back = el("button", { class: "pg-btn ghost", type: "button", text: "Back", onclick: renderStep1 });
+
+    setCta(false);
+    shell(2, "Step 2 of 4", "Receiving address", "Where should we send your " + S.to.symbol.toUpperCase() + "?", [
+      summary,
+      el("div", { style: "margin-top:16px" }, [
+        el("label", { class: "pg-label", text: "Recipient " + S.to.symbol.toUpperCase() + " address" }),
+        addr, hint, err
+      ]),
+      cta, back
+    ]);
+  }
+
+  function miniSummary() {
+    function side(c, amount, est) {
+      var v = el("span", { class: "v" }, [
+        el("span", { text: (amount || "") + " " + c.symbol.toUpperCase() }),
+        coinIcon(c)
+      ]);
+      return v;
+    }
+    var rows = el("div", { class: "pg-summary" }, [
+      el("div", { class: "pg-sumrow" }, [
+        el("span", { class: "k", text: "You send" }), side(S.from, S.amount)
+      ]),
+      el("div", { class: "pg-sumdiv" }),
+      el("div", { class: "pg-sumrow" }, [
+        el("span", { class: "k", text: "You get" }), side(S.to, S.exchange ? S.exchange.amount_to : "")
+      ])
+    ]);
+    return rows;
+  }
+
+  // ---------------------------------------------------------------
+  //  Create the exchange (swap.php)
+  // ---------------------------------------------------------------
+  function createExchange() {
+    var unique = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    var cbBase = defaultCallback();
+    var cb = cbBase + (cbBase.indexOf("?") === -1 ? "?" : "&") + "pgswap=" + unique;
+    var url = EP.swap(S.from.ticker)
+      + "?address=" + encodeURIComponent(S.address)
+      + "&callback=" + encodeURIComponent(cb)
+      + "&amount=" + encodeURIComponent(S.amount)
+      + "&ticker_to=" + encodeURIComponent(S.to.ticker);
+    return fetchJSON(url).then(function (res) {
+      if (!res || !res.data || !res.data.exchange_address_wallet) {
+        throw new Error((res && res.error) || "The exchange could not be created for this pair.");
+      }
+      S.exchange = res.data;
+      S.ipnToken = res.ipn_token || null;
+      return res.data;
+    }).catch(function (e) {
+      throw new Error(friendlyExchangeError(e));
+    });
+  }
+
+  // Turn raw API errors into guidance the customer can act on.
+  function friendlyExchangeError(e) {
+    var raw = (e && (e.apiMessage || e.message) || "").toLowerCase();
+    var minTxt = S.from.min ? (S.from.min + " " + S.from.symbol.toUpperCase()) : null;
+    // 400 / "invalid exchange parameters" -> pair or amount problem
+    if ((e && e.status === 400) || raw.indexOf("invalid exchange parameter") !== -1 ||
+        raw.indexOf("parameter") !== -1 || raw.indexOf("minimum") !== -1 || raw.indexOf("amount") !== -1) {
+      return "This amount can't be exchanged for "
+        + S.from.symbol.toUpperCase() + " \u2192 " + S.to.symbol.toUpperCase() + ". "
+        + (minTxt ? "Increase the amount above the minimum (" + minTxt + "), or " : "Increase the amount, or ")
+        + "pick a different pair, then try again.";
+    }
+    if (e && e.status === 429) {
+      return "Too many requests right now. Please wait a moment and try again.";
+    }
+    if (e && (e.status >= 500)) {
+      return "PayGate is temporarily unavailable. Please try again in a minute.";
+    }
+    // Anything else: show the API's own text if it sent one, else a safe default.
+    return (e && e.apiMessage) ? e.apiMessage
+      : (e && e.message) || "Couldn't create the exchange. Please check the pair and amount, then try again.";
+  }
+
+  // ---------------------------------------------------------------
+  //  STEP 3 — deposit
+  // ---------------------------------------------------------------
+  function renderStep3() {
+    S.step = 3;
+    var d = S.exchange;
+
+    // The qrcode endpoint returns JSON { status, qr_code(base64), payment_uri }.
+    // Fetch it and render the decoded image; never point <img src> at the endpoint.
+    var qr = el("img", { class: "pg-qr", alt: "Deposit QR code" });
+    qr.style.display = "none";
+    fetchJSON(EP.qr(S.from.ticker) + "?address=" + encodeURIComponent(d.exchange_address_wallet))
+      .then(function (res) {
+        if (res && res.status === "success" && res.qr_code) {
+          qr.src = "data:image/png;base64," + res.qr_code;
+          qr.style.display = "";
+        }
+      })
+      .catch(function () { /* QR optional: address + copy button still work */ });
+
+    var copyBtn = el("button", { class: "pg-copy", type: "button", title: "Copy address", html: ICON.copy });
+    copyBtn.addEventListener("click", function () {
+      copyText(d.exchange_address_wallet, copyBtn);
+    });
+
+    var deposit = el("div", { class: "pg-deposit" }, [
+      qr,
+      el("div", { class: "pg-send-amt", html: d.amount_from + " <small>" + S.from.symbol.toUpperCase() + "</small>" }),
+      el("div", { class: "pg-note muted", style: "justify-content:center", text:
+        "Send exactly this amount" + (S.from.network ? " on " + S.from.network.toUpperCase() : "") + " to:" }),
+      el("div", { class: "pg-addr-box" }, [
+        el("code", { text: d.exchange_address_wallet }),
+        copyBtn
+      ])
+    ]);
+
+    var sum = el("div", { class: "pg-summary", style: "margin-top:16px" }, [
+      el("div", { class: "pg-sumrow" }, [
+        el("span", { class: "k", text: "You'll receive (est.)" }),
+        el("span", { class: "v" }, [ el("span", { text: d.amount_to + " " + S.to.symbol.toUpperCase() }), coinIcon(S.to) ])
+      ]),
+      el("div", { class: "pg-sumdiv" }),
+      el("div", { class: "pg-sumrow" }, [
+        el("span", { class: "k", text: "Exchange ID" }),
+        el("span", { class: "v", style: "font-family:var(--pg-mono);font-size:12px", text: d.id })
+      ]),
+      el("div", { class: "pg-sumdiv" }),
+      el("div", { class: "pg-sumrow" }, [
+        el("span", { class: "k", text: "To address" }),
+        el("span", { class: "v", style: "font-family:var(--pg-mono);font-size:12px", text: shortAddr(d.customer_receive_wallet) })
+      ])
+    ]);
+
+    var cta = el("button", { class: "pg-btn", type: "button", text: "I've sent the payment", onclick: renderStep4 });
+
+    shell(3, "Step 3 of 4", "Send your deposit", "The swap starts automatically once your deposit is detected.", [
+      deposit, sum, cta
+    ]);
+
+    // Begin status tracking immediately in the background as well
+    startPolling();
+  }
+
+  // ---------------------------------------------------------------
+  //  STEP 4 — live status (polls every minute)
+  // ---------------------------------------------------------------
+  var STAGES = [
+    { key: "waiting",    label: "Waiting for your deposit" },
+    { key: "confirming", label: "Confirming on the blockchain" },
+    { key: "exchanging", label: "Exchanging assets" },
+    { key: "sending",    label: "Sending to your address" },
+    { key: "finished",   label: "Completed" }
+  ];
+  function stageIndex(status) {
+    for (var i = 0; i < STAGES.length; i++) if (STAGES[i].key === status) return i;
+    if (status === "failed" || status === "expired") return -1;
+    return 0;
+  }
+
+  function renderStep4() {
+    S.step = 4;
+    var d = S.exchange;
+    var status = d.status || "waiting";
+    var idx = stageIndex(status);
+    var failed = (status === "failed" || status === "expired");
+    var done = (status === "finished");
+
+    var dotCls = "pg-status-dot" + (done ? " ok" : failed ? " bad" : "");
+    var dotIcon = done ? ICON.party : failed ? ICON.alert : '<span class="pg-spin">' + ICON.spin + "</span>";
+    var headTitle = done ? "Swap complete" : failed ? (status === "expired" ? "Exchange expired" : "Exchange failed")
+                  : (STAGES[idx] ? STAGES[idx].label : "Processing");
+    var headSub = done ? (d.amount_to + " " + S.to.symbol.toUpperCase() + " sent to your wallet")
+                : failed ? "No funds were lost if you didn't deposit. You can start over."
+                : "Status refreshes automatically every minute.";
+
+    var timeline = el("ul", { class: "pg-timeline" });
+    if (failed) {
+      timeline.appendChild(el("li", { class: "active" }, [
+        el("span", { class: "pg-tl-mark" }),
+        el("span", { class: "pg-tl-txt", text: status === "expired" ? "Deposit window expired" : "Exchange could not be completed" })
+      ]));
+    } else {
+      STAGES.forEach(function (st, i) {
+        var cls = i < idx ? "done" : (i === idx ? "active" : "");
+        if (done) cls = "done";
+        timeline.appendChild(el("li", { class: cls }, [
+          el("span", { class: "pg-tl-mark", html: (i < idx || done) ? ICON.check : "" }),
+          el("span", { class: "pg-tl-txt", text: st.label })
+        ]));
+      });
+    }
+
+    var body = [
+      el("div", { class: "pg-status-head" }, [
+        el("div", { class: dotCls, html: dotIcon }),
+        el("div", { class: "pg-status-txt" }, [ el("b", { text: headTitle }), el("span", { text: headSub }) ])
+      ]),
+      timeline
+    ];
+
+    if (d.tx_from) {
+      body.push(el("div", { class: "pg-tx" }, [
+        el("div", { class: "pg-label", text: "Deposit transaction" }),
+        el("a", { href: "#", text: d.tx_from, onclick: function (e) { e.preventDefault(); } })
+      ]));
+    }
+    if (d.tx_to) {
+      body.push(el("div", { class: "pg-tx" }, [
+        el("div", { class: "pg-label", text: "Payout transaction" }),
+        el("a", { href: "#", text: d.tx_to, onclick: function (e) { e.preventDefault(); } })
+      ]));
+    }
+
+    if (done || failed) {
+      stopPolling();
+      body.push(el("button", { class: "pg-btn", type: "button", text: "Start a new swap", onclick: reset }));
+    } else {
+      body.push(el("div", { class: "pg-poll-note" }, [
+        el("span", { class: "pg-spin", html: ICON.clock }),
+        el("span", { text: "Auto-checking every 60s \u00B7 exchange ID " + d.id })
+      ]));
+      body.push(el("button", { class: "pg-btn ghost", type: "button", text: "View deposit details", onclick: renderStep3 }));
+    }
+
+    shell(4, "Step 4 of 4", "Exchange status", null, body);
+    startPolling();
+  }
+
+  // ---------------------------------------------------------------
+  //  Polling (every minute, client-side)
+  // ---------------------------------------------------------------
+  function pollOnce() {
+    if (!S.exchange || !S.exchange.id) return;
+    fetchJSON(EP.status + "?exchange_id=" + encodeURIComponent(S.exchange.id))
+      .then(function (res) {
+        if (res && res.data) {
+          var prevStatus = S.exchange.status;
+          // merge fresh fields
+          S.exchange = Object.assign({}, S.exchange, res.data);
+          var st = res.data.status;
+          if (st === "finished" || st === "failed" || st === "expired") {
+            stopPolling();
+          }
+          // refresh the status view if the user is on step 4
+          if (S.step === 4) renderStep4();
+          else if (st !== prevStatus && (st === "finished" || st === "failed" || st === "expired") && S.step === 3) {
+            renderStep4();
+          }
+        }
+      })
+      .catch(function () { /* transient network error — keep the interval running */ });
+  }
+  function startPolling() {
+    if (S.pollTimer) return;
+    pollOnce(); // immediate first check
+    S.pollTimer = setInterval(pollOnce, POLL_MS);
+  }
+  function stopPolling() {
+    if (S.pollTimer) { clearInterval(S.pollTimer); S.pollTimer = null; }
+  }
+
+  // ---------------------------------------------------------------
+  //  Utilities
+  // ---------------------------------------------------------------
+  function shortAddr(a) { return a && a.length > 18 ? a.slice(0, 9) + "\u2026" + a.slice(-7) : (a || ""); }
+  function copyText(text, btn) {
+    function ok() { btn.classList.add("copied"); btn.innerHTML = ICON.check; setTimeout(function () { btn.classList.remove("copied"); btn.innerHTML = ICON.copy; }, 1600); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(ok, function () { legacyCopy(text, ok); });
+    } else legacyCopy(text, ok);
+  }
+  function legacyCopy(text, ok) {
+    var ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); ok(); } catch (e) {} 
+    document.body.removeChild(ta);
+  }
+  function reset() {
+    stopPolling();
+    S.amount = ""; S.address = ""; S.exchange = null; S.ipnToken = null;
+    renderStep1();
+  }
+
+  // ---------------------------------------------------------------
+  //  Go
+  // ---------------------------------------------------------------
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else { boot(); }
+})();
+</script>
